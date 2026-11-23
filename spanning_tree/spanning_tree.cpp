@@ -6,6 +6,7 @@
 #include <string>
 #include <clocale>
 #include <limits>
+#include <utility>
 
 //Структура ребра
 struct Edge
@@ -32,6 +33,65 @@ void clearInputBuffer() {
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 }
 
+//Функция поиска, которая создает массив минимальных ребер, которые идут к i вершине
+std::vector<std::vector<std::pair<int, int>>> findMinEdges(std::vector<Edge>& graph, GraphSize& size) {
+    std::vector<std::vector<std::pair<int, int>>> minEdges(size.vertexCount + 1);
+    for (const auto& edge : graph) {
+        minEdges[edge.from].push_back({ edge.to, edge.weight });
+        minEdges[edge.to].push_back({ edge.from, edge.weight });
+    }
+
+    return minEdges;
+}
+
+void primMST(GraphSize& size, std::vector<Edge>& graph) {
+    std::vector<std::vector<std::pair<int, int>>> minEdges = findMinEdges(graph, size);
+    std::vector<bool> visitedVertex(size.vertexCount + 1, false);
+    std::vector<Edge> path;
+
+    visitedVertex[1] = true;
+    int totalWeight = 0;
+
+    for (int i = 0; i < size.vertexCount - 1; ++i) {
+        int minWeight = INT_MAX;
+        int bestFrom = -1;
+        int bestTo = -1;
+
+        for (int from = 1; from <= size.vertexCount; ++from) {
+            if (!visitedVertex[from]) continue;
+            
+            for (const auto& edge : minEdges[from]) {
+                int to = edge.first;
+                int weight = edge.second;
+
+                if (!visitedVertex[to] && weight < minWeight) {
+                    minWeight = weight;
+                    bestFrom = from;
+                    bestTo = to;
+                }
+            }
+        }
+
+        if (bestTo == -1) break;
+
+        visitedVertex[bestTo] = true;
+        path.push_back({ bestFrom, bestTo, minWeight });
+        totalWeight += minWeight;
+        std::cout << "\nДобавлено ребро: " << bestFrom << " - " << bestTo
+            << " (вес " << minWeight << ")\n";
+    }
+    
+    if (static_cast<int>(path.size()) != size.vertexCount - 1) {
+        std::cout << "Граф несвязный, остовного дерева не существует.\n";
+    }
+    else {
+        std::cout << "\nМинимальное остовное дерево (Прим):\n";
+        for (const Edge& e : path) {
+            std::cout << e.from << " - " << e.to << " (вес " << e.weight << ")\n";
+        }
+        std::cout << "Суммарный вес: " << totalWeight << "\n";
+    }
+}
 //Функция ввода размеров графа
 GraphSize inputGraphSize() {
     std::cout << "Введите количество вершин и ребер. Формат ввода (int int).\n";
@@ -50,7 +110,7 @@ GraphSize inputGraphSize() {
 }
 
 //Функция ввода ребер
-std::vector<Edge> inputEdges(GraphSize size) {
+std::vector<Edge> inputEdges(GraphSize& size) {
     std::vector<Edge> graph(size.edgeCount);
     std::cout << "Введите вершины и ребра. Формат ввода (откуда куда вес).\n";
 
@@ -141,7 +201,11 @@ int main()
     }
     std::cout << "\nДанные успешно обработаны!\n";
     
+    std::cout << "\n=== Краскал ===\n";
     findMinSpanningTree(graph, size);
+
+    std::cout << "\n=== Прим ===\n";
+    primMST(size, graph);
     
     return 0;
 }
